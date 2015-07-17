@@ -1,0 +1,256 @@
+/*
+Writen for Coursera Course, "Interactive Computer Graphics with WebGL"
+taught by Prof. Edward Angel, Univ. of New Mexico.
+
+Much of this program is based on the source material provided to the class by the professor.
+*/
+
+
+"use strict";
+
+
+// Control varialbles : Feel free to change these inputs
+
+var nVertices = 10;
+
+var nTimesToSubdivide   =   3;
+var thetaTwist          =   2.;
+var rotateTheta_deg     =   0;
+var oddRad              = 0.3;
+var evenRad             = 1.0;
+
+var bSieripinski        = false;
+
+// Internal variables: Do not change inputs from here-on.
+
+var canvas;
+var gl;
+
+var points = [];
+var floatTol            =   1.e-6;
+
+
+function getPolarCoords(vecIn, vecOut)
+{
+  // Inputs:
+  //    vecIn    vec2 -- Cartesian coordinates
+  //    vecOut   vec2 -- Polar coordaintes
+  var halfPi  = 0.5 * Math.PI;
+
+  vecOut[0] = Math.sqrt(vecIn[0]*vecIn[0] + vecIn[1]*vecIn[1]);
+  
+  if (Math.abs(vecOut[0]) < floatTol)
+  {
+    vecOut[1] = 0.;
+    return;
+  }
+  
+  if (Math.abs(vecIn[0]) < floatTol)
+  {
+    if (vecIn[1] < 0.)
+    {
+      vecOut[1] = -halfPi;
+      return;
+    }
+    else
+    {
+      vecOut[1] =  halfPi;
+      return;
+    }
+  }
+
+  var cosTheta = vecIn[0] / vecOut[0];
+  if (vecIn[1] < 0.)
+    vecOut[1] = -Math.acos(cosTheta);
+  else
+    vecOut[1] =  Math.acos(cosTheta);
+    
+  return;
+
+}
+
+
+function rotatePoint(vertIn, angle_rad)
+{
+  var x = vertIn[0];
+  var y = vertIn[1];
+  
+  vertIn[0] = x * Math.cos(angle_rad) - y * Math.sin(angle_rad);
+  vertIn[1] = x * Math.sin(angle_rad) + y * Math.cos(angle_rad);
+}
+
+
+function twistPoint(vertIn, vertOut)
+{
+  var x = vertIn[0];
+  var y = vertIn[1];
+
+  var r = Math.sqrt(x*x + y*y);
+  
+  var angle_rad = thetaTwist * r;
+  
+  vertOut[0] = x * Math.cos(angle_rad) - y * Math.sin(angle_rad);
+  vertOut[1] = x * Math.sin(angle_rad) + y * Math.cos(angle_rad);
+  
+}
+
+
+// Twist coordinate
+
+function twistCoords(vecIn, vecOut, thetaTwist)
+{
+  // Inputs:
+  //    vecIn      vec2 -- polar coordinates
+  //    vecOut     vec2 -- Cartesian coords to output
+  //    thetaTwist   multiplicative factor used in twist function
+  vecOut[0] = vecIn[0] * Math.cos(thetaTwist * vecIn[0] * vecIn[1]);
+  vecOut[1] = vecIn[0] * Math.sin(thetaTwist * vecIn[0] * vecIn[1]);
+}
+
+
+window.onload = function init()
+{
+    canvas = document.getElementById( "gl-canvas" );
+
+    gl = WebGLUtils.setupWebGL( canvas );
+    if ( !gl ) { alert( "WebGL isn't available" ); }
+
+    //
+    //  Initialize our data for the Sierpinski Gasket
+    //
+
+    // First, initialize the corners of our gasket with three points.
+
+    var rotateTheta_rad = rotateTheta_deg / 180. * Math.PI;
+    var rotateVertices  = 2. * Math.PI / nVertices;
+    
+    /*
+    document.getElementById("nDivisions").onchange = function() {
+    nTimesToSubdivide = event.srcElement.value;
+    */
+    
+    /*
+    var vert0  = vec2(-1., -1.); 
+    var vert1  = vec2( 0.,  1.);
+    var vert2  = vec2( 1., -1.);
+    */
+    
+    var vert0 = vec2(0., 0.);
+
+    var vert1 = vec2(0., 1.);
+    rotatePoint(vert1, rotateTheta_rad);
+    var vert2 = vec2(0., 0.);
+    vert2[0] = vert1[0];
+    vert2[1] = vert1[1];
+    rotatePoint(vert2, rotateVertices);
+    
+    var iTriangle = 0;
+    var vert1a = vec2(0., 0.);
+    var vert2a = vec2(0., 0.);
+    var rad1   = 1.;
+    var rad2   = 1.;
+
+    for (iTriangle=0; iTriangle < nVertices; iTriangle++)
+    {
+      if (iTriangle % 2 == 0)
+      {
+        rad1 = oddRad;
+        rad2 = evenRad;
+      }
+      else
+      {
+        rad2 = oddRad;
+        rad1 = evenRad;
+      }
+      vert1a[0] = vert1[0] * rad1;
+      vert1a[1] = vert1[1] * rad1;
+      
+      vert2a[0] = vert2[0] * rad2;
+      vert2a[1] = vert2[1] * rad2;
+      
+      divideTriangle( vert0, vert1a, vert2a,
+                      nTimesToSubdivide);
+      rotatePoint(vert1, rotateVertices);
+      rotatePoint(vert2, rotateVertices);
+    }
+
+    //
+    //  Configure WebGL
+    //
+    gl.viewport( 0, 0, canvas.width, canvas.height );
+    gl.clearColor( 1.0, 1.0, 1.0, 1.0 );
+
+    //  Load shaders and initialize attribute buffers
+
+    var program = initShaders( gl, "vertex-shader", "fragment-shader" );
+    gl.useProgram( program );
+
+    // Load the data into the GPU
+
+    var bufferId = gl.createBuffer();
+    gl.bindBuffer( gl.ARRAY_BUFFER, bufferId );
+    gl.bufferData( gl.ARRAY_BUFFER, flatten(points), gl.STATIC_DRAW );
+
+    // Associate out shader variables with our data buffer
+
+    var vPosition = gl.getAttribLocation( program, "vPosition" );
+    gl.vertexAttribPointer( vPosition, 2, gl.FLOAT, false, 0, 0 );
+    gl.enableVertexAttribArray( vPosition );
+
+    render();
+};
+
+function triangle( a, b, c )
+{
+    var aOut = vec2(0,0);
+    var bOut = vec2(0,0);
+    var cOut = vec2(0,0);
+
+    //getPolarCoords(a, vecPolar);
+    //twistCoords(vecPolar, a, thetaTwist);
+    twistPoint(a, aOut);
+    
+    //getPolarCoords(b, vecPolar);
+    //twistCoords(vecPolar, b, thetaTwist);
+    twistPoint(b, bOut);
+
+    //getPolarCoords(c, vecPolar);
+    //twistCoords(vecPolar, c, thetaTwist);
+    twistPoint(c, cOut);
+
+    points.push(aOut, bOut, cOut);
+}
+
+function divideTriangle( a, b, c, count )
+{
+
+    // check for end of recursion
+
+    if ( count === 0 ) {
+        triangle( a, b, c );
+    }
+    else {
+
+        //bisect the sides
+
+        var ab = mix( a, b, 0.5 );
+        var ac = mix( a, c, 0.5 );
+        var bc = mix( b, c, 0.5 );
+
+        --count;
+
+        // three new triangles
+
+        divideTriangle( a, ab, ac, count );
+        divideTriangle( c, ac, bc, count );
+        divideTriangle( b, bc, ab, count );
+	if (!bSieripinski)
+          divideTriangle( ac, bc, ab, count );
+    }
+}
+
+function render()
+{
+    gl.clear( gl.COLOR_BUFFER_BIT );
+    gl.drawArrays( gl.TRIANGLES, 0, points.length );
+}

@@ -13,6 +13,12 @@ var oddRad        = 1.0
 var evenRad       = 1.0;
 
 
+/*
+Assignment 1 for Coursera Course, "Interactive Computer Graphics with WebGL",
+employing course materials from Prof. Edward Angel of University of New Mexico.
+ */
+
+
 var bufferId;
 
 function init()

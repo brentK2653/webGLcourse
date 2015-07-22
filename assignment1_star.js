@@ -78,7 +78,7 @@ function init()
       render();
     };
 
-    document.getElementById("sliderDistortion").onchange = function(target)
+    document.getElementById("sliderInnerRad").onchange = function(target)
     {
       evenRad = parseInt(event.target.value) / 100.;
       render();

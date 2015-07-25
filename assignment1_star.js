@@ -11,6 +11,11 @@ var thetaTwist    = 2.;
 var bSieripinski  = 0;
 var oddRad        = 1.0
 var evenRad       = 0.2;
+var bFilled       = 1;
+var bWired        = 1;
+
+var color_fill    = vec4( 0.9, 0.4, 0.8, 1.0 );
+var color_wire    = vec4( 0.0, 0.0, 0.0, 1.0 );
 
 
 /*
@@ -139,6 +144,10 @@ function triangle( a, b, c )
     twistPoint(c, cOut);
 
     points.push(aOut, bOut, cOut);
+
+    gl.bufferSubData(gl.ARRAY_BUFFER, 0, flatten(points));
+    gl.drawArrays( gl.TRIANGLES, 0, points.length );
+    points = [];
 }
 
 /*
@@ -204,6 +213,7 @@ function render()
     //                nSubdivisions);
 
     
+    gl.clear( gl.COLOR_BUFFER_BIT );
     for (iTriangle=0; iTriangle < nVertices; iTriangle++)
     {
       if (iTriangle % 2 == 0)
@@ -228,9 +238,5 @@ function render()
       rotatePoint(vert2, rotateVertices);
     }
 
-    gl.bufferSubData(gl.ARRAY_BUFFER, 0, flatten(points));
-    gl.clear( gl.COLOR_BUFFER_BIT );
-    gl.drawArrays( gl.TRIANGLES, 0, points.length );
-    points = [];
     //requestAnimFrame(render);
 }

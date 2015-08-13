@@ -41,9 +41,18 @@ main()
 <body>
 
 <div>
-<canvas id="gl-canvas" width="512" height="512">
-Oops ... your browser doesn't support the HTML5 canvas element
-</canvas>
+ <table>
+  <tr>
+
+    <td><canvas id="gl-canvas" width="512" height="512">
+    Oops ... your browser doesn't support the HTML5 canvas element
+    </canvas></td>
+    <td><input type="checkbox" id="check_showCurvedEdges">
+        Show edges on "curved" surfaces
+        <br> <input type="checkbox" id="check_wireframe"> Wireframe
+    </td>
+  </tr>
+ </table>
 </div>
 
  <table>
@@ -56,11 +65,12 @@ Oops ... your browser doesn't support the HTML5 canvas element
   </tr>
   <tr>
     <td>
-        <select id = "shapeType" size = "3">
+        <select id = "shapeType" size = "4" value="-1">
             <option value = "0">Sphere</option>
-            <option value = "1">Prism/Cylinder</option>
-            <option value = "2">Pyramid/Cone</option>
-        </select>
+            <option value = "1">Polygon</option>
+            <option value = "2">Prism/Cylinder</option>
+            <option value = "3">Pyramid/Cone</option>
+        </select> &#160; &#160; &#160; &#160;
     </td>
     <td>
         <select id = "baseShape" size = "5">
@@ -69,25 +79,25 @@ Oops ... your browser doesn't support the HTML5 canvas element
             <option value = "4">Square</option>
             <option value = "5">Pentagon</option>
             <option value = "6">Hexagon</option>
-        </select>
+        </select> &#160; &#160; &#160; &#160;
     </td>
     <td>
-        <select id = "faceColor" size = "5">
+        <select id = "faceColorI" size = "5">
             <option value = "0">Black</option>
             <option value = "1">White</option>
             <option value = "2">Red</option>
             <option value = "3">Green</option>
             <option value = "4">Blue</option>
-        </select>
+        </select> &#160; &#160; &#160; &#160;
     </td>
     <td>
-        <select id = "edgeColor" size = "5">
+        <select id = "edgeColorI" size = "5">
             <option value = "0">Black</option>
             <option value = "1">White</option>
             <option value = "2">Red</option>
             <option value = "3">Green</option>
             <option value = "4">Blue</option>
-        </select>
+        </select> &#160; &#160; &#160; &#160;
     </td>
     <td>
         <button id="drawButton">Draw</button>
@@ -95,6 +105,53 @@ Oops ... your browser doesn't support the HTML5 canvas element
   </tr>
 </table>
 
+<br>
+
+<table with=100%>
+  <tr>
+    <td>Radius: <emph id="txt_rad"></emph></td>
+    <td>Height (except sphere): <emph id="txt_height"></emph></td>
+    <td>Rotation angle: <emph id="txt_rotAngle"></emph></td>
+  </tr>
+  <tr>
+    <td>
+      0 <input id="sliderRad" type="range"
+      min="0" max="100" step="1" value="20" /> 1 &#160; &#160; &#160; &#160;
+    </td>
+    <td>
+      0 <input id="sliderHeight" type="range"
+      min="0" max="100" step="1" value="20" /> 1 &#160; &#160; &#160; &#160;
+    </td>
+    <td>
+      -180 <input id="sliderRot" type="range"
+      min="-180" max="180" step="1" value="90" /> 180
+    </td>
+  </tr>
+</table>
+
+<br>
+
+<table with=100%>
+  <tr>
+    <td>Rotation axis X: <emph id="txt_axX"></emph></td>
+    <td>Rotation axis Y: <emph id="txt_axY"></emph></td>
+    <td>Rotation axis Z: <emph id="txt_axZ"></emph></td>
+  </tr>
+  <tr>
+    <td>
+      -1 <input id="sliderAxisX" type="range"
+      min="-100" max="100" step="1" value="0" /> 1 &#160; &#160; &#160; &#160;
+    </td>
+    <td>
+      -1 <input id="sliderAxisY" type="range"
+      min="-100" max="100" step="1" value="100" /> 1 &#160; &#160; &#160; &#160;
+    </td>
+    <td>
+      0 <input id="sliderAxisZ" type="range"
+      min="0" max="100" step="1" value="0" /> 1 &#160; &#160; &#160; &#160;
+    </td>
+  </tr>
+</table>
 
 <!---
 <br>

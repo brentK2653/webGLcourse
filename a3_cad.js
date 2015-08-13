@@ -5,14 +5,26 @@ var gl ;
 
 /* Things left to do:
  * + fix pyramids
- * - translations
- * - curved sides
+ * + translations
+ * + curved sides
+ * - scaling
  * - prism
- * - wireframe
  * - sphere
+ * - check boxes
  */
 
 var maxNumVertices = 2000;
+
+var radius_default      = 1.0;
+var height_default      = 1.0;
+var rotAngleDeg_default =  0;
+
+var scaleVec_default    = [0.2, 0.2, 0.2];
+var rotAxis_default     = [0., 1., 0.];
+var transVec_default    = [0., 0., 0.];
+
+
+
 
 var vertices     = [];
 var vertexColors = [];
@@ -38,11 +50,15 @@ var baseShape = 4;
 
 var curvedEdges = [];
 
-var radius       = 0.2;
-var height       = 0.2;
-var rotAngleDeg  =  0;
+var radius      = radius_default;
+var height      = height_default;
+var rotAngleDeg = rotAngleDeg_default;
 
-var nCircVerts = 20;
+var scaleVec    = vec3(scaleVec_default);
+var rotAxis     = vec3(rotAxis_default);
+var transVec    = vec3(transVec_default);
+
+var nCircVerts  = 20;
 
 var bDraw            = false;
 var bTransform       = false;
@@ -51,9 +67,9 @@ var bShowCurvedEdges = true;
 var bWireframe       = false;
 var CIRC_BASE_IND         = 0;
 
-var rotAxis   = [0., 1., 0.];
-var rotAxisN  = [0., 1., 0.];
+var rotAxisN;
 var shape_archetype;
+var scaleMat;
 var rotationMat;
 var translationMat;
 
@@ -74,6 +90,16 @@ var colors = [
   ];
 
 // Define outside of onload() so we can set these elsewhere.
+var sliderRot;
+
+var sliderScaleX;
+var sliderScaleY;
+var sliderScaleZ;
+
+var sliderTransX;
+var sliderTransY;
+var sliderTransZ;
+
 var sliderAxisX;
 var sliderAxisY;
 var sliderAxisZ;
@@ -179,31 +205,7 @@ window.onload = function init()
     }
   )  
 
-  var sliderRad = document.getElementById("sliderRad");
-  sliderRad.value = radius * 100;
-  sliderRad.addEventListener("mouseup",
-    function()
-    {
-      radius = sliderRad.value / 100. ;
-      set_textBoxes();
-      draw_shape();
-      render();
-    }
-  )
-
-  var sliderHeight = document.getElementById("sliderHeight");
-  sliderHeight.value = height * 100;
-  sliderHeight.addEventListener("mouseup",
-    function()
-    {
-      height = sliderHeight.value / 100. ;
-      set_textBoxes();
-      draw_shape();
-      render();
-    }
-  )
-
-  var sliderRot = document.getElementById("sliderRot");
+  sliderRot = document.getElementById("sliderRot");
   sliderRot.value = rotAngleDeg;
   sliderRot.addEventListener("mouseup",
     function()
@@ -216,6 +218,45 @@ window.onload = function init()
     }
   )
 
+ 
+  sliderScaleX = document.getElementById("sliderScaleX");
+  sliderScaleY = document.getElementById("sliderScaleY");
+  sliderScaleZ = document.getElementById("sliderScaleZ");
+
+  sliderScaleX.value = scaleVec[0] * 50. ;
+  sliderScaleX.addEventListener("mouseup",
+    function()
+    {
+      scaleVec[0] = sliderScaleX.value / 50. ;
+      set_textBoxes();
+      set_scaleMat();
+      render();
+    }
+  )
+
+  sliderScaleY.value = scaleVec[1] * 50. ;
+  sliderScaleY.addEventListener("mouseup",
+    function()
+    {
+      scaleVec[1] = sliderScaleY.value / 50. ;
+      set_textBoxes();
+      set_scaleMat();
+      render();
+    }
+  )
+
+  sliderScaleZ.value = scaleVec[2] * 50. ;
+  sliderScaleZ.addEventListener("mouseup",
+    function()
+    {
+      scaleVec[2] = sliderScaleZ.value / 50. ;
+      set_textBoxes();
+      set_scaleMat();
+      render();
+    }
+  )
+
+ 
   sliderAxisX = document.getElementById("sliderAxisX");
   sliderAxisY = document.getElementById("sliderAxisY");
   sliderAxisZ = document.getElementById("sliderAxisZ");
@@ -253,6 +294,43 @@ window.onload = function init()
     }
   )
 
+  sliderTransX = document.getElementById("sliderTransX");
+  sliderTransY = document.getElementById("sliderTransY");
+  sliderTransZ = document.getElementById("sliderTransZ");
+
+  sliderTransX.value = transVec[0] * 100. ;
+  sliderTransX.addEventListener("mouseup",
+    function()
+    {
+      transVec[0] = sliderTransX.value / 100. ;
+      set_textBoxes();
+      set_translationMat();
+      render();
+    }
+  )
+
+  sliderTransY.value = transVec[1] * 100. ;
+  sliderTransY.addEventListener("mouseup",
+    function()
+    {
+      transVec[1] = sliderTransY.value / 100. ;
+      set_textBoxes();
+      set_translationMat();
+      render();
+    }
+  )
+
+  sliderTransZ.value = transVec[2] * 100. ;
+  sliderTransZ.addEventListener("mouseup",
+    function()
+    {
+      transVec[2] = sliderTransZ.value / 100. ;
+      set_textBoxes();
+      set_translationMat();
+      render();
+    }
+  )
+
   check_wireframe = document.getElementById("check_wireframe");
   check_wireframe.checked = bWireframe;
   check_wireframe.addEventListener("mousedown",
@@ -265,7 +343,9 @@ window.onload = function init()
       render();
     }
   )
-    
+  
+  reset_vals();
+  
   var drawButton = document.getElementById("drawButton");
   drawButton.addEventListener("click",
     function()
@@ -277,7 +357,8 @@ window.onload = function init()
         shapeInd += 1;
         bInitDraw = true;
         shapeVerts_start.push(vertices.length);
-        set_rotationMat();
+        reset_vals();
+        console.log(transVec)
         draw_shape();
         bInitDraw = false;
         shapeVerts_end.push(vertices.length);
@@ -293,6 +374,39 @@ window.onload = function init()
 }
 
 
+function reset_vals()
+{
+  radius = radius_default;
+  height = height_default;
+  rotAngleDeg = rotAngleDeg_default;
+
+  scaleVec = vec3(scaleVec_default);
+  rotAxis  = vec3(rotAxis_default);
+  transVec = vec3(transVec_default);
+
+  sliderRot.value = rotAngleDeg;
+  
+  sliderScaleX.value = scaleVec[0] * 50. ;
+  sliderScaleY.value = scaleVec[1] * 50. ;
+  sliderScaleZ.value = scaleVec[2] * 50. ;
+  
+  sliderAxisX.value = rotAxis[0] * 100. ;
+  sliderAxisY.value = rotAxis[1] * 100. ;
+  sliderAxisZ.value = rotAxis[2] * 100. ;
+  
+  sliderTransX.value = transVec[0] * 100. ;
+  sliderTransY.value = transVec[1] * 100. ;
+  sliderTransZ.value = transVec[2] * 100. ;
+
+  
+  set_scaleMat();
+  set_translationMat();
+  set_rotationMat();
+  
+  set_textBoxes();
+}
+
+
 function draw_shape()
 {
   if (shapeType==1)
@@ -304,9 +418,15 @@ function draw_shape()
 
 function set_textBoxes()
 {
-  document.getElementById("txt_rad").innerHTML = radius ;
-  document.getElementById("txt_height").innerHTML = height;
   document.getElementById("txt_rotAngle").innerHTML = rotAngleDeg;
+
+  document.getElementById("txt_scaleX").innerHTML = scaleVec[0];
+  document.getElementById("txt_scaleY").innerHTML = scaleVec[1];
+  document.getElementById("txt_scaleZ").innerHTML = scaleVec[2];
+
+  document.getElementById("txt_transX").innerHTML = transVec[0];
+  document.getElementById("txt_transY").innerHTML = transVec[1];
+  document.getElementById("txt_transZ").innerHTML = transVec[2];
 
   document.getElementById("txt_axX").innerHTML = rotAxis[0];
   document.getElementById("txt_axY").innerHTML = rotAxis[1];
@@ -370,10 +490,19 @@ function set_rotationMat()
 function set_translationMat()
 {
   translationMat = [
-    [1., 0., 0., 1.],
-    [0., 1., 0., 1.],
-    [0., 0., 1., 1.],
-    [0., 0., 0., 1.]];      
+    [1., 0., 0., transVec[0]],
+    [0., 1., 0., transVec[1]],
+    [0., 0., 1., transVec[2]],
+    [0., 0., 0., 1.         ] ];      
+}
+
+function set_scaleMat()
+{
+  scaleMat = [
+    [scaleVec[0], 0., 0., 0.],
+    [0., scaleVec[1], 0., 0.],
+    [0., 0., scaleVec[2], 0.],
+    [0., 0., 0.         , 1.] ];      
 }
 
 
@@ -458,9 +587,12 @@ function matVectMult(matIn, vertIn)
 
 function transformVert(vertIn)
 {
-  //console.log(vertIn)
-  var tmp = matVectMult(rotationMat, vertIn);
-  //console.log(tmp)
+  var tmp = vec4(vertIn);
+  
+  tmp = matVectMult(scaleMat, tmp);
+  tmp = matVectMult(rotationMat, tmp);
+  tmp = matVectMult(translationMat, tmp);
+  
   return tmp;
 }
 

@@ -40,6 +40,15 @@ main()
 
 <body>
 
+
+<h3>Instructions:</h3>
+<ol>
+<li>Choose shape options to the right of the drawing area, then click "New shape".</li>
+<li>Modify shape using sliders below. The operations are performed in order they appear: scaling of base shape along Cartesian directions, followed by rotation of the shape about the specified axis and angle and, lastly, by translation.</li>
+</ol>
+</p>
+
+
 <div>
  <table>
   <tr>
@@ -47,7 +56,62 @@ main()
     <td><canvas id="gl-canvas" width="512" height="512">
     Oops ... your browser doesn't support the HTML5 canvas element
     </canvas></td>
-    <td><input type="checkbox" id="check_showCurvedEdges">
+    <td>
+     <table>
+      <tr>
+        <td>Shape type:</td>
+        <td>Base shape:</td>
+      </tr>
+      <tr>
+        <td>
+            <select id = "shapeType" size = "4" value="-1">
+                <option value = "0">Sphere</option>
+                <option value = "1">Polygon</option>
+                <option value = "2">Prism/Cylinder</option>
+                <option value = "3">Pyramid/Cone</option>
+            </select> &#160; &#160; &#160; &#160;
+        </td>
+        <td>
+            <select id = "baseShape" size = "5">
+                <option value = "0">Circle</option>
+                <option value = "3">Triangle</option>
+                <option value = "4">Square</option>
+                <option value = "5">Pentagon</option>
+                <option value = "6">Hexagon</option>
+            </select> &#160; &#160; &#160; &#160;
+        </td>
+      </tr>
+      <tr>
+        <td>Face color:</td>
+        <td>Edge color:</td>
+        <td></td>
+      </tr>
+      <tr>
+        <td>
+            <select id = "faceColorI" size = "5">
+                <option value = "0">Black</option>
+                <option value = "1">White</option>
+                <option value = "2">Red</option>
+                <option value = "3">Green</option>
+                <option value = "4">Blue</option>
+            </select> &#160; &#160; &#160; &#160;
+        </td>
+        <td>
+            <select id = "edgeColorI" size = "5">
+                <option value = "0">Black</option>
+                <option value = "1">White</option>
+                <option value = "2">Red</option>
+                <option value = "3">Green</option>
+                <option value = "4">Blue</option>
+            </select> &#160; &#160; &#160; &#160;
+        </td>
+        <td>
+            <button id="drawButton">New shape</button>
+        </td>
+      </tr>
+    </table>
+
+        <br><input type="checkbox" id="check_showCurvedEdges">
         Show edges on "curved" surfaces
         <br> <input type="checkbox" id="check_wireframe"> Wireframe
     </td>
@@ -55,76 +119,28 @@ main()
  </table>
 </div>
 
- <table>
-  <tr>
-    <td>Shape type:</td>
-    <td>Base shape:</td>
-    <td>Face color:</td>
-    <td>Edge color:</td>
-    <td></td>
-  </tr>
-  <tr>
-    <td>
-        <select id = "shapeType" size = "4" value="-1">
-            <option value = "0">Sphere</option>
-            <option value = "1">Polygon</option>
-            <option value = "2">Prism/Cylinder</option>
-            <option value = "3">Pyramid/Cone</option>
-        </select> &#160; &#160; &#160; &#160;
-    </td>
-    <td>
-        <select id = "baseShape" size = "5">
-            <option value = "0">Circle</option>
-            <option value = "3">Triangle</option>
-            <option value = "4">Square</option>
-            <option value = "5">Pentagon</option>
-            <option value = "6">Hexagon</option>
-        </select> &#160; &#160; &#160; &#160;
-    </td>
-    <td>
-        <select id = "faceColorI" size = "5">
-            <option value = "0">Black</option>
-            <option value = "1">White</option>
-            <option value = "2">Red</option>
-            <option value = "3">Green</option>
-            <option value = "4">Blue</option>
-        </select> &#160; &#160; &#160; &#160;
-    </td>
-    <td>
-        <select id = "edgeColorI" size = "5">
-            <option value = "0">Black</option>
-            <option value = "1">White</option>
-            <option value = "2">Red</option>
-            <option value = "3">Green</option>
-            <option value = "4">Blue</option>
-        </select> &#160; &#160; &#160; &#160;
-    </td>
-    <td>
-        <button id="drawButton">Draw</button>
-    </td>
-  </tr>
-</table>
+<br>
 
 <br>
 
 <table with=100%>
   <tr>
-    <td>Radius: <emph id="txt_rad"></emph></td>
-    <td>Height (except sphere): <emph id="txt_height"></emph></td>
-    <td>Rotation angle: <emph id="txt_rotAngle"></emph></td>
+    <td>Scale X: <emph id="txt_scaleX"></emph></td>
+    <td>Scale Y: <emph id="txt_scaleY"></emph></td>
+    <td>Scale Z: <emph id="txt_scaleZ"></emph></td>
   </tr>
   <tr>
     <td>
-      0 <input id="sliderRad" type="range"
-      min="0" max="100" step="1" value="20" /> 1 &#160; &#160; &#160; &#160;
+      0 <input id="sliderScaleX" type="range"
+      min="0" max="100" step="2" value="100" /> 2 &#160; &#160; &#160; &#160;
     </td>
     <td>
-      0 <input id="sliderHeight" type="range"
-      min="0" max="100" step="1" value="20" /> 1 &#160; &#160; &#160; &#160;
+      0 <input id="sliderScaleY" type="range"
+      min="0" max="100" step="2" value="100" /> 2 &#160; &#160; &#160; &#160;
     </td>
     <td>
-      -180 <input id="sliderRot" type="range"
-      min="-180" max="180" step="1" value="90" /> 180
+      0 <input id="sliderScaleZ" type="range"
+      min="0" max="100" step="2" value="100" /> 2 &#160; &#160; &#160; &#160;
     </td>
   </tr>
 </table>
@@ -149,6 +165,44 @@ main()
     <td>
       0 <input id="sliderAxisZ" type="range"
       min="0" max="100" step="1" value="0" /> 1 &#160; &#160; &#160; &#160;
+    </td>
+  </tr>
+</table>
+
+<br>
+
+<table with=33%>
+  <tr>
+    <td>Rotation angle: <emph id="txt_rotAngle"></emph></td>
+  </tr>
+  <tr>
+    <td>
+      -180 <input id="sliderRot" type="range"
+      min="-180" max="180" step="1" value="90" /> 180
+    </td>
+  </tr>
+</table>
+
+<br>
+
+<table with=100%>
+  <tr>
+    <td>Translation in X: <emph id="txt_transX"></emph></td>
+    <td>Translation in Y: <emph id="txt_transY"></emph></td>
+    <td>Translation in Z: <emph id="txt_transZ"></emph></td>
+  </tr>
+  <tr>
+    <td>
+      -1 <input id="sliderTransX" type="range"
+      min="-100" max="100" step="1" value="0" /> 1 &#160; &#160; &#160; &#160;
+    </td>
+    <td>
+      -1 <input id="sliderTransY" type="range"
+      min="-100" max="100" step="1" value="100" /> 1 &#160; &#160; &#160; &#160;
+    </td>
+    <td>
+      -1 <input id="sliderTransZ" type="range"
+      min="-100" max="100" step="1" value="0" /> 1 &#160; &#160; &#160; &#160;
     </td>
   </tr>
 </table>

@@ -3,27 +3,18 @@
 var canvas ;
 var gl ;
 
-/* Things left to do:
- * + fix pyramids
- * + translations
- * + curved sides
- * - scaling
- * - prism
- * - sphere
- * - check boxes
- */
+var maxNumVertices = 20000;
 
-var maxNumVertices = 2000;
-
-var radius_default      = 1.0;
-var height_default      = 1.0;
+var radius_default      = 0.4;
+var height_default      = 0.8;
 var rotAngleDeg_default =  0;
 
-var scaleVec_default    = [0.2, 0.2, 0.2];
+var scaleVec_default    = [1., 1., 1.];
 var rotAxis_default     = [0., 1., 0.];
 var transVec_default    = [0., 0., 0.];
 
-
+var scale_sliderFac = 50.;
+var shapeCounter    =  0;
 
 
 var vertices     = [];
@@ -45,8 +36,8 @@ var totalPoints  =  0 ;
 var faceColorI = 3;
 var edgeColorI = 0;
 
-var shapeType = 3;
-var baseShape = 4;
+var shapeType = 0;
+var baseShape = 0;
 
 var curvedEdges = [];
 
@@ -58,14 +49,17 @@ var scaleVec    = vec3(scaleVec_default);
 var rotAxis     = vec3(rotAxis_default);
 var transVec    = vec3(transVec_default);
 
-var nCircVerts  = 20;
+var nCircVerts  = 20; // needs to be a multiple of 4
+                      // for present method of sphere construction
 
 var bDraw            = false;
 var bTransform       = false;
+var bTransform_fromOrig = true;
+// setting this to false not working, and would require significant mods
 var bInitDraw        = false;
 var bShowCurvedEdges = true;
 var bWireframe       = false;
-var CIRC_BASE_IND         = 0;
+var CIRC_BASE_IND    = 0;
 
 var rotAxisN;
 var shape_archetype;
@@ -107,7 +101,7 @@ var sliderAxisZ;
 var check_showCurvedEdges;
 var check_wireframe;
 
-
+var fileSummaryStr = '';
   
   
 function bDraw_check()
@@ -223,33 +217,33 @@ window.onload = function init()
   sliderScaleY = document.getElementById("sliderScaleY");
   sliderScaleZ = document.getElementById("sliderScaleZ");
 
-  sliderScaleX.value = scaleVec[0] * 50. ;
+  sliderScaleX.value = scaleVec[0] * scale_sliderFac ;
   sliderScaleX.addEventListener("mouseup",
     function()
     {
-      scaleVec[0] = sliderScaleX.value / 50. ;
+      scaleVec[0] = sliderScaleX.value / scale_sliderFac ;
       set_textBoxes();
       set_scaleMat();
       render();
     }
   )
 
-  sliderScaleY.value = scaleVec[1] * 50. ;
+  sliderScaleY.value = scaleVec[1] * scale_sliderFac ;
   sliderScaleY.addEventListener("mouseup",
     function()
     {
-      scaleVec[1] = sliderScaleY.value / 50. ;
+      scaleVec[1] = sliderScaleY.value / scale_sliderFac ;
       set_textBoxes();
       set_scaleMat();
       render();
     }
   )
 
-  sliderScaleZ.value = scaleVec[2] * 50. ;
+  sliderScaleZ.value = scaleVec[2] * scale_sliderFac ;
   sliderScaleZ.addEventListener("mouseup",
     function()
     {
-      scaleVec[2] = sliderScaleZ.value / 50. ;
+      scaleVec[2] = sliderScaleZ.value / scale_sliderFac ;
       set_textBoxes();
       set_scaleMat();
       render();
@@ -330,15 +324,21 @@ window.onload = function init()
       render();
     }
   )
-
-  check_wireframe = document.getElementById("check_wireframe");
-  check_wireframe.checked = bWireframe;
-  check_wireframe.addEventListener("mousedown",
+  check_showCurvedEdges = document.getElementById("check_showCurvedEdges");
+  check_showCurvedEdges.checked = bShowCurvedEdges;
+  check_showCurvedEdges.addEventListener("click",
     function()
     {
-      bWireframe = check_wireframe.checked;
-      console.log(bWireframe);
-      set_rotationMat();
+      transformShape();
+      render();
+    }
+  )
+  
+  check_wireframe = document.getElementById("check_wireframe");
+  check_wireframe.checked = bWireframe;
+  check_wireframe.addEventListener("click",
+    function()
+    {
       transformShape();
       render();
     }
@@ -346,19 +346,28 @@ window.onload = function init()
   
   reset_vals();
   
+  var writeButton = document.getElementById("writeButton");
+  writeButton.addEventListener("click", writeCurrentShapeToConsole);
+  
+  var writeAllButton = document.getElementById("writeAllButton");
+  writeAllButton.addEventListener("click", writeAllShapesToConsole);
+  
   var drawButton = document.getElementById("drawButton");
   drawButton.addEventListener("click",
     function()
     {
-      console.log("click");
       bDraw_check();
       if (bDraw)
       {
+        if (shapeCounter>0)
+          fileSummaryStr += get_currentShapeInfo();
+          //get_currentShapeInfo();
+        get_currentShapeInfo
+        shapeCounter += 1;
         shapeInd += 1;
         bInitDraw = true;
         shapeVerts_start.push(vertices.length);
         reset_vals();
-        console.log(transVec)
         draw_shape();
         bInitDraw = false;
         shapeVerts_end.push(vertices.length);
@@ -369,16 +378,125 @@ window.onload = function init()
   )
 
   set_textBoxes();
-  
-  
 }
 
+
+function writeCurrentShapeToConsole()
+{
+  console.log(get_currentShapeInfo())
+}
+
+function get_currentShapeInfo()
+{
+      var shapeTypeStr, baseShapeStr, faceColorStr, edgeColorStr;
+
+      var strOutCurr = "\n" + "Shape " + shapeCounter + "\n"
+      
+      // Shape type
+      if (shapeType == 0)
+        shapeTypeStr = "Sphere";
+      else
+      if (shapeType == 1)
+        shapeTypeStr = "Polygon";
+      else
+      if (shapeType == 2)
+        shapeTypeStr = "Cylinder/Prism";
+      else
+      if (shapeType == 3)
+        shapeTypeStr = "Cone/Pyramid";
+      strOutCurr += "Shape type: " + shapeTypeStr + "\n";
+      //console.log("Shape type: %s", shapeTypeStr);
+      
+      // Base shape
+      if (shapeType > 0)
+      {
+        if (baseShape == 0)
+          baseShapeStr = "Circle";
+        else
+        if (baseShape == 3)
+          baseShapeStr = "Triangle";
+        else
+        if (baseShape == 4)
+          baseShapeStr = "Square";
+        else
+        if (baseShape == 5)
+          baseShapeStr = "Pentagon";
+        else
+        if (baseShape == 6)
+          baseShapeStr = "Hexagon";
+        strOutCurr += "Base shape: " + baseShapeStr + "\n";
+        //console.log("Base shape: %s", baseShapeStr);
+      }
+      
+      //Face color
+      if (faceColorI==0)
+        faceColorStr = "Black";
+      else
+      if (faceColorI==1)
+        faceColorStr = "White";
+      else
+      if (faceColorI==2)
+        faceColorStr = "Red";
+      else
+      if (faceColorI==3)
+        faceColorStr = "Green";
+      else
+      if (faceColorI==4)
+        faceColorStr = "Blue";
+      strOutCurr += "Face color:  " + faceColorStr + "\n";
+      //console.log("Face color: %s", faceColorStr);
+      
+      
+      //Edge color
+      if (edgeColorI==0)
+        edgeColorStr = "Black";
+      else
+      if (edgeColorI==1)
+        edgeColorStr = "White";
+      else
+      if (edgeColorI==2)
+        edgeColorStr = "Red";
+      else
+      if (edgeColorI==3)
+        edgeColorStr = "Green";
+      else
+      if (edgeColorI==4)
+        edgeColorStr = "Blue";
+      strOutCurr += "Edge color:  " + edgeColorStr + "\n";
+      //console.log("Edge color: %s", edgeColorStr);
+      
+      strOutCurr += "Scale(X,Y,Z) = (" + scaleVec[0] + ", "
+          + scaleVec[1] + ", " + scaleVec[2] + ")" + "\n";
+      //console.log("Scale(X,Y,Z) = (%f, %f, %f)",
+      //            scaleVec[0], scaleVec[1], scaleVec[2]);
+      strOutCurr += "Rotation(X,Y,Z; angle) = (" + rotAxis[0] + ", "
+                          + ", "+ rotAxis[1] + ", " + rotAxis[2] + ", "
+                          + rotAngleDeg + ")" + "\n";
+      //console.log("Rotation(X,Y,Z; angle) = (%f, %f, %f; %f)",
+      //            rotAxis[0], rotAxis[1], rotAxis[2], rotAngleDeg);
+      strOutCurr += "Translation(X,Y,Z) = (" + transVec[0] + ", "
+                      + ", " + transVec[1] + ", "
+                      + transVec[2] + ")" + "\n";
+      //console.log("Translation(X,Y,Z) = (%f, %f, %f)",
+      //            transVec[0], transVec[1], transVec[2]);
+      
+      return strOutCurr;
+}
+
+function writeAllShapesToConsole()
+{
+  console.log(fileSummaryStr);
+  writeCurrentShapeToConsole();
+}
 
 function reset_vals()
 {
   radius = radius_default;
   height = height_default;
   rotAngleDeg = rotAngleDeg_default;
+  
+  bWireframe = check_wireframe.checked;
+  bShowCurvedEdges = check_showCurvedEdges.checked;
 
   scaleVec = vec3(scaleVec_default);
   rotAxis  = vec3(rotAxis_default);
@@ -386,9 +504,9 @@ function reset_vals()
 
   sliderRot.value = rotAngleDeg;
   
-  sliderScaleX.value = scaleVec[0] * 50. ;
-  sliderScaleY.value = scaleVec[1] * 50. ;
-  sliderScaleZ.value = scaleVec[2] * 50. ;
+  sliderScaleX.value = scaleVec[0] * scale_sliderFac ;
+  sliderScaleY.value = scaleVec[1] * scale_sliderFac ;
+  sliderScaleZ.value = scaleVec[2] * scale_sliderFac ;
   
   sliderAxisX.value = rotAxis[0] * 100. ;
   sliderAxisY.value = rotAxis[1] * 100. ;
@@ -409,8 +527,12 @@ function reset_vals()
 
 function draw_shape()
 {
+  if (shapeType==0)
+    draw_sphere();
   if (shapeType==1)
     draw_polygon();
+  if (shapeType==2)
+    draw_prism();
   if (shapeType==3)
     draw_pyramid();
 }
@@ -423,6 +545,10 @@ function set_textBoxes()
   document.getElementById("txt_scaleX").innerHTML = scaleVec[0];
   document.getElementById("txt_scaleY").innerHTML = scaleVec[1];
   document.getElementById("txt_scaleZ").innerHTML = scaleVec[2];
+
+  document.getElementById("txt_scaleMaxX").innerHTML = 200 / scale_sliderFac;
+  document.getElementById("txt_scaleMaxY").innerHTML = 200 / scale_sliderFac;
+  document.getElementById("txt_scaleMaxZ").innerHTML = 200 / scale_sliderFac;
 
   document.getElementById("txt_transX").innerHTML = transVec[0];
   document.getElementById("txt_transY").innerHTML = transVec[1];
@@ -517,7 +643,7 @@ function rotatePoint_zPlane(vertIn, angle_rad)
 
 
 
-function gen_polygon(radIn, nVertices, zVal)
+function gen_polygon(radIn, zVal, nVertices)
 {
   var v0;
   var nVertices;
@@ -542,6 +668,8 @@ function gen_polygon(radIn, nVertices, zVal)
   polyVerts.push(vec4(vert0))
 
   var vert1 = vec4(0., radIn, zVal, 1.);
+  if (baseShape==4)
+    rotatePoint_zPlane(vert1, 0.25*Math.PI);
 
 
   for (v0=0; v0 < nVertices; v0++)
@@ -603,31 +731,248 @@ function transformShape()
     return;
 
   var v0, vi0;
-  for (v0 = shapeVerts_start[shapeInd];
-       v0 < shapeVerts_end[shapeInd];
-       v0++)
+  if (bTransform_fromOrig)
   {
-    vi0 = v0 - shapeVerts_start[shapeInd];
-    vertices[v0] = transformVert(shape_archetype[vi0])
+    for (v0 = shapeVerts_start[shapeInd];
+         v0 < shapeVerts_end[shapeInd];
+         v0++)
+    {
+      vi0 = v0 - shapeVerts_start[shapeInd];
+      vertices[v0] = transformVert(shape_archetype[vi0])
+    } 
+  }
+  else
+  {
+    for (v0 = shapeVerts_start[shapeInd];
+         v0 < shapeVerts_end[shapeInd];
+         v0++)
+      vertices[v0] = transformVert(vertices[v0])
+
   }
 }
 
 
+function draw_sphere()
+
+{
+  var v0, v1;
+  var thetaInc = 2. * Math.PI / nCircVerts;
+  var zSteps = nCircVerts / 4;
+
+  var polyVerts = gen_polygon(radius);
+  shape_archetype = [];
+  
+  var zVal, zValL, rho, rhoL;
+  var theta, thetaP;
+  
+  // Top/bottom
+  zVal = radius * Math.cos(thetaInc);
+  rho  = radius * Math.sin(thetaInc);
+
+  var topNode    = vec4(0., 0.,  radius, 1.);
+  var bottomNode = vec4(0., 0., -radius, 1.);
+
+  var node0 = vec4(rho * Math.cos(-thetaInc),
+                  rho * Math.sin(-thetaInc),
+                  zVal, 1.);
+  var node1, node0b, node1b, node2, node2b, node3, node3b;
+  
+  for (v0=0; v0 < nCircVerts; v0++)
+  {
+    node0b = vec4(node0);
+    node0b[2] = -zVal;
+    node1 = vec4(rho * Math.cos(v0 * thetaInc),
+                 rho * Math.sin(v0 * thetaInc),
+                zVal, 1.);
+    node1b = vec4(node1);
+    node1b[2] = -zVal;
+
+    // faces
+    shape_archetype.push(vec4(topNode));
+    shape_archetype.push(vec4(node0));
+    shape_archetype.push(vec4(node1));
+    // edges
+    shape_archetype.push(vec4(topNode));
+    shape_archetype.push(vec4(node0));
+    shape_archetype.push(vec4(node1));
+    if (bInitDraw)
+    {
+      nFaceVerts.push(3);
+      vertices.push(vec4(topNode));
+      vertices.push(vec4(node0));
+      vertices.push(vec4(node1));
+      vertexColors.push(vec4(faceColor));
+      vertexColors.push(vec4(faceColor));
+      vertexColors.push(vec4(faceColor));
+
+      nEdgeVerts.push(3);
+      vertices.push(vec4(topNode));
+      vertices.push(vec4(node0));
+      vertices.push(vec4(node1));
+      vertexColors.push(vec4(edgeColor));
+      vertexColors.push(vec4(edgeColor));
+      vertexColors.push(vec4(edgeColor));
+      curvedEdges.push(nFaces);
+      nFaces += 1;
+    }
+
+    // faces
+    shape_archetype.push(vec4(bottomNode));
+    shape_archetype.push(vec4(node0b));
+    shape_archetype.push(vec4(node1b));
+    // edges
+    shape_archetype.push(vec4(bottomNode));
+    shape_archetype.push(vec4(node0b));
+    shape_archetype.push(vec4(node1b));
+    if (bInitDraw)
+    {
+      nFaceVerts.push(3);
+      vertices.push(vec4(bottomNode));
+      vertices.push(vec4(node0b));
+      vertices.push(vec4(node1b));
+      vertexColors.push(vec4(faceColor));
+      vertexColors.push(vec4(faceColor));
+      vertexColors.push(vec4(faceColor));
+
+      nEdgeVerts.push(3);
+      vertices.push(vec4(bottomNode));
+      vertices.push(vec4(node0b));
+      vertices.push(vec4(node1b));
+      vertexColors.push(vec4(edgeColor));
+      vertexColors.push(vec4(edgeColor));
+      vertexColors.push(vec4(edgeColor));
+      curvedEdges.push(nFaces);
+      nFaces += 1;
+    }
+  
+    node0 = vec4(node1);
+  }
+  
+  for (v1=1; v1 < zSteps; v1++)
+  {
+    zVal  = radius * Math.cos( v1    * thetaInc);
+    zValL = radius * Math.cos((v1+1) * thetaInc);
+    rho   = radius * Math.sin( v1    * thetaInc);
+    rhoL  = radius * Math.sin((v1+1) * thetaInc);
+    
+
+    for (v0=0; v0 < nCircVerts; v0++)
+    {
+      theta = thetaInc * v0;
+      thetaP = theta + thetaInc;
+      
+      node0 = vec4(rho * Math.cos(theta ), rho * Math.sin(theta ),
+                   zVal , 1.);
+      node1 = vec4(rho * Math.cos(thetaP), rho * Math.sin(thetaP),
+                   zVal , 1.);
+      node2 = vec4(rhoL* Math.cos(thetaP), rhoL* Math.sin(thetaP),
+                   zValL, 1.);
+      node3 = vec4(rhoL* Math.cos(theta ), rhoL* Math.sin(theta ),
+                   zValL, 1.);
+    
+      // faces
+      shape_archetype.push(vec4(node0));
+      shape_archetype.push(vec4(node1));
+      shape_archetype.push(vec4(node2));
+      shape_archetype.push(vec4(node3));
+      // edges
+      shape_archetype.push(vec4(node0));
+      shape_archetype.push(vec4(node1));
+      shape_archetype.push(vec4(node2));
+      shape_archetype.push(vec4(node3));
+      if (bInitDraw)
+      {
+        nFaceVerts.push(4);
+        vertices.push(vec4(node0));
+        vertices.push(vec4(node1));
+        vertices.push(vec4(node2));
+        vertices.push(vec4(node3));
+        vertexColors.push(vec4(faceColor));
+        vertexColors.push(vec4(faceColor));
+        vertexColors.push(vec4(faceColor));
+        vertexColors.push(vec4(faceColor));
+
+        nEdgeVerts.push(4);
+        vertices.push(vec4(node0));
+        vertices.push(vec4(node1));
+        vertices.push(vec4(node2));
+        vertices.push(vec4(node3));
+        vertexColors.push(vec4(edgeColor));
+        vertexColors.push(vec4(edgeColor));
+        vertexColors.push(vec4(edgeColor));
+        vertexColors.push(vec4(edgeColor));
+        curvedEdges.push(nFaces);
+        nFaces += 1;
+      }
+      
+      node0[2] = -node0[2];
+      node1[2] = -node1[2];
+      node2[2] = -node2[2];
+      node3[2] = -node3[2];
+      
+      // faces
+      shape_archetype.push(vec4(node0));
+      shape_archetype.push(vec4(node1));
+      shape_archetype.push(vec4(node2));
+      shape_archetype.push(vec4(node3));
+      // edges
+      shape_archetype.push(vec4(node0));
+      shape_archetype.push(vec4(node1));
+      shape_archetype.push(vec4(node2));
+      shape_archetype.push(vec4(node3));
+      if (bInitDraw)
+      {
+        nFaceVerts.push(4);
+        vertices.push(vec4(node0));
+        vertices.push(vec4(node1));
+        vertices.push(vec4(node2));
+        vertices.push(vec4(node3));
+        vertexColors.push(vec4(faceColor));
+        vertexColors.push(vec4(faceColor));
+        vertexColors.push(vec4(faceColor));
+        vertexColors.push(vec4(faceColor));
+
+        nEdgeVerts.push(4);
+        vertices.push(vec4(node0));
+        vertices.push(vec4(node1));
+        vertices.push(vec4(node2));
+        vertices.push(vec4(node3));
+        vertexColors.push(vec4(edgeColor));
+        vertexColors.push(vec4(edgeColor));
+        vertexColors.push(vec4(edgeColor));
+        vertexColors.push(vec4(edgeColor));
+        curvedEdges.push(nFaces);
+        nFaces += 1;
+      }
+    }
+  }
+
+  
+}  
+
+
+
+
+
 function draw_polygon()
+
 {
   var v0;
 
   var polyVerts = gen_polygon(radius);
-  shape_archetytpe = [];
- 
+  shape_archetype = [];
+  
   var nVertices = polyVerts.length - 2;
-
-  // Add faces
-  shape_archetype.push(vec4(polyVerts[0]));
   if (bInitDraw)
   {
     nFaceVerts.push(nVertices + 2);
     nEdgeVerts.push(nVertices);
+  }
+    
+  // Add base
+  shape_archetype.push(vec4(polyVerts[0]));
+  if (bInitDraw)
+  {
     vertices.push(vec4(polyVerts[0]));
     vertexColors.push(vec4(faceColor));
   }
@@ -639,7 +984,6 @@ function draw_polygon()
       vertices.push(vec4(polyVerts[v0+1]));
       vertexColors.push(vec4(faceColor));
     }
-      
   }
   shape_archetype.push(vec4(polyVerts[1]));
   if (bInitDraw)
@@ -648,7 +992,6 @@ function draw_polygon()
     vertexColors.push(vec4(faceColor));
   }
 
-  // Add edges
   for (v0=0; v0 < nVertices; v0++)
   {
     shape_archetype.push(vec4(polyVerts[v0+1]));
@@ -656,12 +999,160 @@ function draw_polygon()
     {
       vertices.push(vec4(polyVerts[v0+1]));
       vertexColors.push(vec4(edgeColor));
+    }    
+  }
+
+  if (bInitDraw)
+    nFaces += 1;
+  
+}
+
+
+function draw_prism()
+{
+  var v0;
+  shape_archetype = [];
+  var tmp1, tmp2;
+
+  // Add base
+  var polyVerts = gen_polygon(radius);
+  var nVertices = polyVerts.length - 2;
+  if (bInitDraw)
+  {
+    nFaceVerts.push(nVertices + 2);
+    nEdgeVerts.push(nVertices);
+  }
+    
+  shape_archetype.push(vec4(polyVerts[0]));
+  if (bInitDraw)
+  {
+    vertices.push(vec4(polyVerts[0]));
+    vertexColors.push(vec4(faceColor));
+  }
+  for (v0=0; v0 < nVertices; v0++)
+  {
+    shape_archetype.push(vec4(polyVerts[v0+1]));
+    if (bInitDraw)
+    {
+      vertices.push(vec4(polyVerts[v0+1]));
+      vertexColors.push(vec4(faceColor));
     }
+  }
+  shape_archetype.push(vec4(polyVerts[1]));
+  if (bInitDraw)
+  {
+    vertices.push(vec4(polyVerts[1]));
+    vertexColors.push(vec4(faceColor));
+  }
+
+  for (v0=0; v0 < nVertices; v0++)
+  {
+    shape_archetype.push(vec4(polyVerts[v0+1]));
+    if (bInitDraw)
+    {
+      vertices.push(vec4(polyVerts[v0+1]));
+      vertexColors.push(vec4(edgeColor));
+    }    
   }
 
   if (bInitDraw)
     nFaces += 1;
 
+  
+  // Add top
+  polyVerts = gen_polygon(radius, height);
+  
+  var nVertices = polyVerts.length - 2;
+  if (bInitDraw)
+  {
+    nFaceVerts.push(nVertices + 2);
+    nEdgeVerts.push(nVertices);
+  }
+
+  shape_archetype.push(vec4(polyVerts[0]));
+  if (bInitDraw)
+  {
+    vertices.push(vec4(polyVerts[0]));
+    vertexColors.push(vec4(faceColor));
+  }
+  for (v0=0; v0 < nVertices; v0++)
+  {
+    shape_archetype.push(vec4(polyVerts[v0+1]));
+    if (bInitDraw)
+    {
+      vertices.push(vec4(polyVerts[v0+1]));
+      vertexColors.push(vec4(faceColor));
+    }
+  }
+  shape_archetype.push(vec4(polyVerts[1]));
+  if (bInitDraw)
+  {
+    vertices.push(vec4(polyVerts[1]));
+    vertexColors.push(vec4(faceColor));
+  }
+
+  for (v0=0; v0 < nVertices; v0++)
+  {
+    shape_archetype.push(vec4(polyVerts[v0+1]));
+    if (bInitDraw)
+    {
+      vertices.push(vec4(polyVerts[v0+1]));
+      vertexColors.push(vec4(edgeColor));
+    }    
+  }
+
+  if (bInitDraw)
+    nFaces += 1;
+  
+  // Add sides
+  for (v0=0; v0 < nVertices; v0++)
+  {
+
+    // Faces
+    tmp1 = vec4(polyVerts[v0+1]);
+    tmp2 = vec4(polyVerts[v0+2]);
+    tmp1[2] = 0;
+    tmp2[2] = 0;
+    shape_archetype.push(vec4(polyVerts[v0+1]));
+    shape_archetype.push(vec4(polyVerts[v0+2]));
+    shape_archetype.push(vec4(tmp2));
+    shape_archetype.push(vec4(tmp1));
+
+    if (bInitDraw)
+    {
+      nFaceVerts.push(4);
+      vertices.push(vec4(polyVerts[v0+1]));
+      vertices.push(vec4(polyVerts[v0+2]));
+      vertices.push(vec4(tmp2));
+      vertices.push(vec4(tmp1));
+      vertexColors.push(vec4(faceColor));
+      vertexColors.push(vec4(faceColor));
+      vertexColors.push(vec4(faceColor));
+      vertexColors.push(vec4(faceColor));
+    }
+      
+    // Edges
+    shape_archetype.push(vec4(polyVerts[v0+1]));
+    shape_archetype.push(vec4(polyVerts[v0+2]));
+    shape_archetype.push(vec4(tmp2));
+    shape_archetype.push(vec4(tmp1));
+    if (bInitDraw)
+    {
+      nEdgeVerts.push(4);
+      vertices.push(vec4(polyVerts[v0+1]));
+      vertices.push(vec4(polyVerts[v0+2]));
+      vertices.push(vec4(tmp2));
+      vertices.push(vec4(tmp1));
+      vertexColors.push(vec4(edgeColor));
+      vertexColors.push(vec4(edgeColor));
+      vertexColors.push(vec4(edgeColor));
+      vertexColors.push(vec4(edgeColor));
+      if (baseShape == CIRC_BASE_IND)
+        curvedEdges.push(nFaces);
+      nFaces += 1;
+    }
+
+  }
 }
 
 
@@ -762,7 +1253,7 @@ function draw_pyramid()
   //   use small triangle to create "point"
   if (baseShape == CIRC_BASE_IND)
   {
-    var capVerts = gen_polygon(radius * 0.01, 3, 0.);
+    var capVerts = gen_polygon(radius * 0.01, 0., 3);
     
     // Swap x- and z-values, then translate to height
         
@@ -830,7 +1321,9 @@ function render()
   
   transformShape();
   
-  console.log("render");
+  bWireframe = check_wireframe.checked;
+  bShowCurvedEdges = check_showCurvedEdges.checked;
+  
   
   var v0=0;
   var f0;
@@ -846,8 +1339,6 @@ function render()
   v0 = 0;
   for (f0=0; f0 < nFaces; f0++)
   {
-    //console.log("f0, nFaceVerts, nEdgeVerts = %d, %d, %d",
-    //             f0, nFaceVerts[f0], nEdgeVerts[f0]); 
     if (!bWireframe)
       gl.drawArrays(gl.TRIANGLE_FAN, v0, nFaceVerts[f0]);
     v0 += nFaceVerts[f0];
@@ -856,12 +1347,10 @@ function render()
     if (!bShowCurvedEdges && curvedEdges.indexOf(f0) > -1)
       bDrawEdge = false;
     if (bDrawEdge)
-      gl.drawArrays(gl.LINE_LOOP, v0, nEdgeVerts[f0]);
+        gl.drawArrays(gl.LINE_LOOP, v0, nEdgeVerts[f0]);
     v0 += nEdgeVerts[f0];
    
   }
-  //console.log(v0);
-  
   
   
 }

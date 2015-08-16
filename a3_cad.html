@@ -45,6 +45,8 @@ main()
 <ol>
 <li>Choose shape options to the right of the drawing area, then click "New shape".</li>
 <li>Modify shape using sliders below. The operations are performed in order they appear: scaling of base shape along Cartesian directions, followed by rotation of the shape about the specified axis and angle and, lastly, by translation.</li>
+<li>The shape's position is fixed when a new shape is drawn.</li>
+<li>Clear the drawing by reloading the page.</li>
 </ol>
 </p>
 
@@ -61,14 +63,15 @@ main()
       <tr>
         <td>Shape type:</td>
         <td>Base shape:</td>
+        <td></td>
       </tr>
       <tr>
         <td>
             <select id = "shapeType" size = "4" value="-1">
                 <option value = "0">Sphere</option>
                 <option value = "1">Polygon</option>
-                <option value = "2">Prism/Cylinder</option>
-                <option value = "3">Pyramid/Cone</option>
+                <option value = "2">Cylinder/Prism</option>
+                <option value = "3">Cone/Pyramid</option>
             </select> &#160; &#160; &#160; &#160;
         </td>
         <td>
@@ -80,6 +83,7 @@ main()
                 <option value = "6">Hexagon</option>
             </select> &#160; &#160; &#160; &#160;
         </td>
+        <td><button id="drawButton"><b>New shape<b></button></td>
       </tr>
       <tr>
         <td>Face color:</td>
@@ -106,12 +110,13 @@ main()
             </select> &#160; &#160; &#160; &#160;
         </td>
         <td>
-            <button id="drawButton">New shape</button>
+            <br><button id="writeButton">Write info on current shape to console</button>
+            <br><button id="writeAllButton">Write info on all shapes to console</button>
         </td>
       </tr>
     </table>
 
-        <br><input type="checkbox" id="check_showCurvedEdges">
+        <br><input type="checkbox" id="check_showCurvedEdges" value="false">
         Show edges on "curved" surfaces
         <br> <input type="checkbox" id="check_wireframe"> Wireframe
     </td>
@@ -132,15 +137,17 @@ main()
   <tr>
     <td>
       0 <input id="sliderScaleX" type="range"
-      min="0" max="100" step="2" value="100" /> 2 &#160; &#160; &#160; &#160;
+      min="0" max="200" step="1" />
+      <emph id="txt_scaleMaxX"></emph> &#160; &#160; &#160; &#160;
     </td>
     <td>
       0 <input id="sliderScaleY" type="range"
-      min="0" max="100" step="2" value="100" /> 2 &#160; &#160; &#160; &#160;
+      min="0" max="200" step="1" /><emph id="txt_scaleMaxY"></emph>
+      &#160; &#160; &#160; &#160;
     </td>
     <td>
       0 <input id="sliderScaleZ" type="range"
-      min="0" max="100" step="2" value="100" /> 2 &#160; &#160; &#160; &#160;
+      min="0" max="200" step="1" /><emph id="txt_scaleMaxZ"></emph> &#160; &#160; &#160; &#160;
     </td>
   </tr>
 </table>

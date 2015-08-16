@@ -39,6 +39,8 @@ var edgeColorI = 0;
 var shapeType = 0;
 var baseShape = 0;
 
+var faceColorID, edgeColorID, shapeTypeID, baseShapeID;
+
 var curvedEdges = [];
 
 var radius      = radius_default;
@@ -372,6 +374,13 @@ window.onload = function init()
         bInitDraw = false;
         shapeVerts_end.push(vertices.length);
         bTransform = true;
+        
+        // Save drawing conditions for generation of output.
+        faceColorID = faceColorI;
+        edgeColorID = edgeColorI;
+        baseShapeID = baseShape;
+        shapeTypeID = shapeType;
+        
         render();
       }
     }
@@ -393,74 +402,74 @@ function get_currentShapeInfo()
       var strOutCurr = "\n" + "Shape " + shapeCounter + "\n"
       
       // Shape type
-      if (shapeType == 0)
+      if (shapeTypeID == 0)
         shapeTypeStr = "Sphere";
       else
-      if (shapeType == 1)
+      if (shapeTypeID == 1)
         shapeTypeStr = "Polygon";
       else
-      if (shapeType == 2)
+      if (shapeTypeID == 2)
         shapeTypeStr = "Cylinder/Prism";
       else
-      if (shapeType == 3)
+      if (shapeTypeID == 3)
         shapeTypeStr = "Cone/Pyramid";
       strOutCurr += "Shape type: " + shapeTypeStr + "\n";
       //console.log("Shape type: %s", shapeTypeStr);
       
       // Base shape
-      if (shapeType > 0)
+      if (shapeTypeID > 0)
       {
-        if (baseShape == 0)
+        if (baseShapeID == 0)
           baseShapeStr = "Circle";
         else
-        if (baseShape == 3)
+        if (baseShapeID == 3)
           baseShapeStr = "Triangle";
         else
-        if (baseShape == 4)
+        if (baseShapeID == 4)
           baseShapeStr = "Square";
         else
-        if (baseShape == 5)
+        if (baseShapeID == 5)
           baseShapeStr = "Pentagon";
         else
-        if (baseShape == 6)
+        if (baseShapeID == 6)
           baseShapeStr = "Hexagon";
         strOutCurr += "Base shape: " + baseShapeStr + "\n";
         //console.log("Base shape: %s", baseShapeStr);
       }
       
       //Face color
-      if (faceColorI==0)
+      if (faceColorID==0)
         faceColorStr = "Black";
       else
-      if (faceColorI==1)
+      if (faceColorID==1)
         faceColorStr = "White";
       else
-      if (faceColorI==2)
+      if (faceColorID==2)
         faceColorStr = "Red";
       else
-      if (faceColorI==3)
+      if (faceColorID==3)
         faceColorStr = "Green";
       else
-      if (faceColorI==4)
+      if (faceColorID==4)
         faceColorStr = "Blue";
       strOutCurr += "Face color:  " + faceColorStr + "\n";
       //console.log("Face color: %s", faceColorStr);
       
       
       //Edge color
-      if (edgeColorI==0)
+      if (edgeColorID==0)
         edgeColorStr = "Black";
       else
-      if (edgeColorI==1)
+      if (edgeColorID==1)
         edgeColorStr = "White";
       else
-      if (edgeColorI==2)
+      if (edgeColorID==2)
         edgeColorStr = "Red";
       else
-      if (edgeColorI==3)
+      if (edgeColorID==3)
         edgeColorStr = "Green";
       else
-      if (edgeColorI==4)
+      if (edgeColorID==4)
         edgeColorStr = "Blue";
       strOutCurr += "Edge color:  " + edgeColorStr + "\n";
       //console.log("Edge color: %s", edgeColorStr);
